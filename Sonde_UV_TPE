@@ -1,0 +1,161 @@
+#include <SPI.h> //Librairie pour le protocole de communication avec la carte SD
+#include <SD.h> // Librairie pour écrire et lire la carte SD
+#include <Wire.h> //Librairie pour le protocole de communication avec la RTC (I2C)
+#include "RTClib.h" // Librairie pour lire et écrire l'heure
+#include "DHT.h"; // Librairie pour lire la température et l'humidité
+
+/*
+Préparation pour l'horloge temps réel (RTC)
+*/
+RTC_DS1307 RTC; //Classe RTC_DS1307 pour l'utiliation de la RTC
+
+/*
+Préparation du capteur température et humidité
+*/
+#define DHTPIN 2 // broche ou l'on a branché le capteur de température et d'humidité
+#define DHTTYPE DHT11 // définition du type de capteur DHT (11)
+
+DHT dht(DHTPIN, DHTTYPE);//déclaration du capteur
+
+/*
+Préparation de la carte SD
+*/
+File fichierSD; // Création de variable du fichier
+
+boolean confirmation = true; // Variable de confirmation de l'état de marche des composants 
+
+void setup() {
+  
+  pinMode(8, OUTPUT); // Initialisation du pin 8 pour la led de confirmation
+  
+  Serial.begin(9600); // Démarrage du moniteur série pour débuguer
+  
+  /*
+  Mise en place de la RTC
+  */
+  Wire.begin(); // Démarrage de la librairie wire.h pour le protocole de communication I2C
+  RTC.begin(); // Démarrage de la RTC
+ 
+    if (! RTC.isrunning()) { // Si l'horloge ne marche pas
+    RTC.adjust(DateTime(__DATE__, __TIME__)); // Met à l'heure à date à laquelle le sketch est compilé
+    }  
+    
+    if (! RTC.isrunning()) { // Si l'horloge ne marche toujours pas
+    confirmation = false; // Etat de confirmation: négatif
+    }
+    
+  /*
+  Mise en place du capteur à ultraviolets
+  */
+  pinMode(A0, INPUT); // Initialisation du pin A0 (analogique) pour lire le capteur à ultraviolets
+      
+  /*
+  Mise en place du capteur d'intensité lumineuse
+  */
+  pinMode(A1, INPUT); // Initialisation du pin A1 (analogique) pour lire le capteur d'intensité lumineuse
+  
+  /*
+  Mise en place du capteur de température et humidité
+  */
+  dht.begin(); // Démarage du capteur de température et humidité
+
+  /*
+  Mise en place de la carte SD
+  */
+  
+  if (!SD.begin(10)){ // Si la communication entre le pin 10 et la carte SD ne se fait pas
+    confirmation = false; // Etat de confirmation : négatif
+  }
+  
+   if(confirmation){ // Si confirmation est vrai, donc que la communication avec la carte SD et la RTC fonctionne
+   Serial.println("RTC et module carte SD fonctionnels"); // Affiche dans le moniteur série que la horloge temps réel et le module carte SD sont fonctionnels
+   digitalWrite(8, HIGH); // Allume la led de confirmation pendant 3 secondes
+   delay(3000);
+   digitalWrite(8, LOW);
+     
+  fichierSD = SD.open("donnes.txt", FILE_WRITE); // Ouvre le fichier donnees_sonde.log ou crée le si il n'existe pas
+  fichierSD.println("Debut ecriture"); // Ecrit dans le fichier "Début écriture"
+  Serial.println("Debut ecriture"); // Ecrit la meme chose dans le moniteur série
+  fichierSD.println("Format des donnees : Date Heure : intensite_en_uv_en_mW/m2; intensite_lumineuse; temperature_en_°C; humidite_en_%"); // Ecrit le format des données
+  Serial.println("Format des donnees : Date Heure : intensite_en_uv_en_mW/m2; intensite_lumineuse; temperature_en_°C; humidite_en_%"); // Ecrit la même chose dans le moniteur série
+  fichierSD.close(); // Ferme la communication avec la carte SD et sauvegarde ce qui a été écrit
+  
+ }else{
+   Serial.println("RTC et module carte SD non fonctionnels"); // Afffiche dans le moniteur série que la horloge temps réel et le module carte SD ne sont pas fonctionnels
+   for(int i = 0; i <= 10; i++){ // Fait clignoter la led afin de signaler un problème
+       digitalWrite(8, HIGH);
+       delay(150);
+       digitalWrite(8, LOW);
+       delay(150);
+   }
+ }
+
+  
+}
+void loop() {
+   DateTime now = RTC.now(); // Lecture de la date et de la de l'heure et la sauvegarde dans la variable now
+   if(now.minute()%10 == 0){ // Si le reste de la division euclydienne du nombre de minute actuel par 10 vaut 0;
+   //La condition sera donc vérifier 6 fois par heure à 0; 10; 20; 30; 40; 50 minutes les mesures se ferons donc à intervalle régulier toutes les 10 minutes
+  fichierSD = SD.open("donnes.txt", FILE_WRITE); // Ouvre le fichier donnes.txt*
+ 
+  fichierSD.print(now.day()); // Affiche le jour
+  fichierSD.print('/');
+  fichierSD.print(now.month()); // Affiche le mois
+  fichierSD.print('/');
+  fichierSD.print(now.year()); // Affiche l'année
+  fichierSD.print(' ');
+  fichierSD.print(now.hour()); // Affiche l'heure
+  fichierSD.print(':');
+  fichierSD.print(now.minute()); // Affiche les minutes
+  fichierSD.print(':');
+  fichierSD.print(now.second()); // Affiche les secondes
+  fichierSD.print(" : ");
+  fichierSD.print(analogRead(A0)*307);  // Affiche l'intensité en Ultraviolets en mW/m2
+  fichierSD.print("mW/m2; ");
+  fichierSD.print(analogRead(A1)); // Affiche l'intensité lumineuse
+  fichierSD.print("; ");
+  fichierSD.print(dht.readTemperature()); // Affiche le temperature en *C
+  fichierSD.print("*C; ");
+  fichierSD.print(dht.readHumidity()); // Affiche l'humidité en %
+  fichierSD.println('%');
+  
+  // Fait de meme dans le moniteur serie
+  Serial.print(now.day());
+  Serial.print('/');
+  Serial.print(now.month());
+  Serial.print('/');
+  Serial.print(now.year());
+  Serial.print(' ');
+  Serial.print(now.hour());
+  Serial.print(':');
+  Serial.print(now.minute());
+  Serial.print(':');
+  Serial.print(now.second());
+  Serial.print(" : ");
+  Serial.print(analogRead(A0)*307);
+  Serial.print("mW/m2; ");
+  Serial.print(analogRead(A1));
+  Serial.print("; ");
+  Serial.print(dht.readTemperature());
+  Serial.print("*C; ");
+  Serial.print(dht.readHumidity());
+  Serial.println('%');
+  // On lit les données et les écrit sur la carte SD et dans le moniteur série
+  
+  fichierSD.close(); // Ferme la communication avec la carte SD et sauvegarde ce qui a été écrit
+  
+  digitalWrite(8 , HIGH); // Allume la led de confirmation afin de signaler l'activité de la sonde
+  
+  delay(60000); // On attend une minute pour ne pas relire les donnees une deuxième fois dans moins de 10 minutes
+
+  digitalWrite(8, LOW); //Eteins la led
+  
+  }
+  
+  // Fait clignoter la led lentement comme indicateur visuel de l'activité de l'arduino
+  digitalWrite(8, HIGH);
+  delay(1000);
+  digitalWrite(8, LOW);
+  delay(1000);
+
+}
