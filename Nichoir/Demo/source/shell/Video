@@ -1,0 +1,3 @@
+#!bin/bash
+now=`date+%d-%m_%H-%-M-%S`
+raspivid -t 15000 -o /home/pi/recording_$now.h264 -fps 30
