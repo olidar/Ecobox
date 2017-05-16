@@ -9,7 +9,7 @@ t=int(input("Entrez le nombre de jours mis en tampon : "))
 reponse = input("Voulez vous conserver les fichiers logs existants? O/n : ")
 if reponse == 'N' or 'n' or 'Non' or 'non':
 	for n in range (0,30):
-		nomTxt= "/home/pi/Scripts/logs"+str(n)+".txt"
+		nomTxt= "/home/pi/Ecobox/Nichoir/Demo/source/python"+str(n)+".txt"
 		try:
 			os.remove(nomTxt)
 		except:
@@ -17,7 +17,7 @@ if reponse == 'N' or 'n' or 'Non' or 'non':
 	n=0
 
 n=0
-nomTxt= "/home/pi/Scripts/logs"+str(n)+".txt"
+nomTxt= "/home/pi/Ecobox/Nichoir/Demo/source/python"+str(n)+".txt"
 
 sensor = Adafruit_DHT.DHT22
 pin = 23
@@ -41,11 +41,11 @@ while 1:
         else:
             print('Failed to get reading. Try again!')
         compteur=time.time()
-    if compteurjour+ 60 < time.time():
+    if compteurjour+ 86400 < time.time():
         n+=1
         if n == t:
             n=0
-        nomTxt="/home/pi/Scripts/logs"+str(n)+".txt"
+        nomTxt="/home/pi/Ecobox/Nichoir/Demo/source/python"+str(n)+".txt"
         print("Passage au ficher log",n," .")
         compteurjour=time.time()
         if os.path.isfile(nomTxt) == True:

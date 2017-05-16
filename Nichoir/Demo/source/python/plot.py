@@ -36,7 +36,7 @@ with open(nomTxt,"r") as file:
 
 
 plt.plot(temps,temperature)
-plt.savefig('foo.png',format="png")
+plt.savefig('/home/pi/Ecobox/Nichoir/Demo/data/HiBW/foo.png',format="png")
 plt.show()
 
 
